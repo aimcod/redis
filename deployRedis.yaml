@@ -4,32 +4,16 @@
   gather_facts: yes
   tasks:
 
-
-  - name: Import and validate the repo GPG
-    rpm_key:
-      state: present
-      validate_certs: true
-      key: https://rpms.remirepo.net/RPM-GPG-KEY-remi2022
-
-  - name: Install the redis 7 repo
-    dnf:
-      name: 'https://rpms.remirepo.net/enterprise/remi-release-8.rpm'
-      state: present
-
   - name: Update packages
     dnf:
       name: "*"
       state: latest
 
-  - name: Enable remi-7.0 module
-    shell: dnf module enable -y redis:remi-7.0
-
   - name: Install the latest version of Redis from the redis repo
     dnf:
       name: redis
-      enablerepo: redis:remi-7.0
       state: present
-      disable_gpg_check: true
+
 
   - name: Disable THP(transparent_hugepages)
     shell: sed -i '/^GRUB_CMDLINE/ s/"$/ transparent_hugepage=never"/' /etc/default/grub && grub2-mkconfig -o /boot/grub2/grub.cfg
