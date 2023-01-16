@@ -1,6 +1,6 @@
 ---
 - name: Deploy Redis
-  hosts: Redis7
+  hosts: all
   gather_facts: yes
   tasks:
 
