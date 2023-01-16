@@ -1,0 +1,83 @@
+---
+- name: Deploy Redis
+  hosts: Redis7
+  gather_facts: yes
+  tasks:
+
+
+  - name: Import and validate the repo GPG
+    rpm_key:
+      state: present
+      validate_certs: true
+      key: https://rpms.remirepo.net/RPM-GPG-KEY-remi2021
+
+  - name: Install the redis 7 repo
+    dnf:
+      name: 'https://rpms.remirepo.net/enterprise/remi-release-9.1.rpm'
+      state: present
+
+  - name: Update packages
+    dnf:
+      name: "*"
+      state: latest
+
+  - name: Enable remi-7.0 module
+    shell: dnf module enable -y redis:remi-7.0
+
+  - name: Install the latest version of Redis from the redis repo
+    dnf:
+      name: redis
+      enablerepo: redis:remi-7.0
+      state: present
+      disable_gpg_check: true
+
+  - name: Disable THP(transparent_hugepages)
+    shell: sed -i '/^GRUB_CMDLINE/ s/"$/ transparent_hugepage=never"/' /etc/default/grub && grub2-mkconfig -o /boot/grub2/grub.cfg
+    register: thp
+
+  - name: Enable Memory Overcommitting(Avoid OOM)
+    ansible.posix.sysctl:
+      name: vm.overcommit_memory
+      value: '1'
+      state: present
+    register: ovm
+  
+  - name: Increase swappiness
+    ansible.posix.sysctl:
+      name: vm.swappiness
+      value: '1'
+      state: present
+    register: nessie
+
+  - name: Increase max connections
+    ansible.posix.sysctl:
+      name: net.core.somaxconn
+      value: '65365'
+      sysctl_file: /etc/sysctl.conf
+      reload: yes
+    register: somaxconn
+
+  - name: Update redis.conf
+    ansible.builtin.copy:
+      src: ./redis.conf
+      dest: /etc/redis/redis.conf
+      owner: redis
+      group: redis
+      mode: '0640'
+      backup: yes
+    register: conf
+
+  - name: Enable and Start Redis
+    service:
+      name: redis
+      enabled: yes
+      state: started
+
+  - name: reboot
+    reboot:
+
+  - name: Do a benchmark
+    shell: redis-benchmark
+    register: benchpress
+
+   
